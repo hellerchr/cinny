@@ -35,6 +35,7 @@ import {
   useCallMemberSoundSync,
   useCallStart,
 } from '../hooks/useCallEmbed';
+import { usePushToTalk } from '../hooks/usePushToTalk';
 import { callChatAtom, callEmbedAtom } from '../state/callEmbed';
 import { CallEmbed } from '../plugins/call';
 import { useSelectedRoom } from '../hooks/router/useSelectedRoom';
@@ -352,9 +353,11 @@ function IncomingCallListener({ callEmbed, joined }: IncomingCallListenerProps) 
 
 function CallUtils({ embed }: { embed: CallEmbed }) {
   const setCallEmbed = useSetAtom(callEmbedAtom);
+  const joined = useCallJoined(embed);
 
   useCallMemberSoundSync(embed);
   useCallThemeSync(embed);
+  usePushToTalk(embed, joined);
   useCallHangupEvent(
     embed,
     useCallback(() => {

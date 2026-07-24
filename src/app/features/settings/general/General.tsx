@@ -741,6 +741,59 @@ function Editor() {
   );
 }
 
+function PushToTalkKeyCapture() {
+  const [pushToTalkKey, setPushToTalkKey] = useSetting(settingsAtom, 'pushToTalkKey');
+  const [listening, setListening] = useState(false);
+
+  useEffect(() => {
+    if (!listening) return undefined;
+
+    const handleKeyDown = (evt: KeyboardEvent) => {
+      evt.preventDefault();
+      if (evt.key !== 'Escape') {
+        setPushToTalkKey(evt.code);
+      }
+      setListening(false);
+    };
+
+    window.addEventListener('keydown', handleKeyDown, true);
+    return () => window.removeEventListener('keydown', handleKeyDown, true);
+  }, [listening, setPushToTalkKey]);
+
+  return (
+    <Button
+      size="300"
+      variant="Secondary"
+      outlined
+      fill="Soft"
+      radii="300"
+      onClick={() => setListening(true)}
+    >
+      <Text size="T300">{listening ? 'Press a key...' : pushToTalkKey}</Text>
+    </Button>
+  );
+}
+
+function Voice() {
+  const [pushToTalk, setPushToTalk] = useSetting(settingsAtom, 'pushToTalk');
+
+  return (
+    <Box direction="Column" gap="100">
+      <Text size="L400">Voice</Text>
+      <SequenceCard className={SequenceCardStyle} variant="SurfaceVariant" direction="Column">
+        <SettingTile
+          title="Push to Talk"
+          description="Hold the push to talk key to unmute your microphone while in a call. Only works while the window is focused."
+          after={<Switch variant="Primary" value={pushToTalk} onChange={setPushToTalk} />}
+        />
+      </SequenceCard>
+      <SequenceCard className={SequenceCardStyle} variant="SurfaceVariant" direction="Column">
+        <SettingTile title="Push to Talk Key" after={<PushToTalkKeyCapture />} />
+      </SequenceCard>
+    </Box>
+  );
+}
+
 function SelectMessageLayout() {
   const [menuCords, setMenuCords] = useState<RectCords>();
   const [messageLayout, setMessageLayout] = useSetting(settingsAtom, 'messageLayout');
@@ -1005,6 +1058,7 @@ export function General({ requestClose }: GeneralProps) {
               <Appearance />
               <DateAndTime />
               <Editor />
+              <Voice />
               <Messages />
             </Box>
           </PageContent>

@@ -46,6 +46,9 @@ export interface Settings {
   hour24Clock: boolean;
   dateFormatString: string;
 
+  pushToTalk: boolean;
+  pushToTalkKey: string;
+
   developerTools: boolean;
 }
 
@@ -79,6 +82,9 @@ const defaultSettings: Settings = {
 
   hour24Clock: false,
   dateFormatString: 'D MMM YYYY',
+
+  pushToTalk: false,
+  pushToTalkKey: 'Space',
 
   developerTools: false,
 };
