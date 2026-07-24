@@ -67,6 +67,9 @@ import { getRoomPermissionsAPI, useRoomPermissions } from '../../hooks/useRoomPe
 import { InviteUserPrompt } from '../../components/invite-user-prompt';
 import { useRoomName } from '../../hooks/useRoomMeta';
 import { useCallMembers, useCallSession } from '../../hooks/useCall';
+import { useCallSpeakers } from '../../hooks/useCallSpeakers';
+import { CallEmbed } from '../../plugins/call';
+import { SpeakerAvatarOutline } from '../call-status/styles.css';
 import { useCallEmbed, useCallStart } from '../../hooks/useCallEmbed';
 import { callChatAtom } from '../../state/callEmbed';
 import { useCallPreferencesAtom } from '../../state/hooks/callPreferences';
@@ -261,8 +264,9 @@ const getCallMemberUserIds = (members: CallMembership[]): string[] => {
 type CallMemberUserProps = {
   room: Room;
   userId: string;
+  speaking?: boolean;
 };
-function CallMemberUser({ room, userId }: CallMemberUserProps) {
+function CallMemberUser({ room, userId, speaking }: CallMemberUserProps) {
   const mx = useMatrixClient();
   const useAuthentication = useMediaAuthentication();
   const name = getMemberDisplayName(room, userId) ?? getMxIdLocalPart(userId) ?? userId;
@@ -273,7 +277,7 @@ function CallMemberUser({ room, userId }: CallMemberUserProps) {
 
   return (
     <Box alignItems="Center" gap="200" style={{ padding: `${toRem(2)} ${config.space.S200}` }}>
-      <Avatar size="200" radii="400">
+      <Avatar size="200" radii="400" className={speaking ? SpeakerAvatarOutline : undefined}>
         <UserAvatar
           userId={userId}
           src={avatarUrl}
@@ -293,17 +297,29 @@ function CallMemberUser({ room, userId }: CallMemberUserProps) {
 type RoomNavCallMembersProps = {
   room: Room;
   members: CallMembership[];
+  speakers?: Set<string>;
 };
-function RoomNavCallMembers({ room, members }: RoomNavCallMembersProps) {
+function RoomNavCallMembers({ room, members, speakers }: RoomNavCallMembersProps) {
   const userIds = getCallMemberUserIds(members);
 
   return (
     <Box direction="Column" style={{ paddingLeft: config.space.S400 }}>
       {userIds.map((userId) => (
-        <CallMemberUser key={userId} room={room} userId={userId} />
+        <CallMemberUser key={userId} room={room} userId={userId} speaking={speakers?.has(userId)} />
       ))}
     </Box>
   );
+}
+
+type ActiveRoomNavCallMembersProps = {
+  room: Room;
+  members: CallMembership[];
+  embed: CallEmbed;
+};
+function ActiveRoomNavCallMembers({ room, members, embed }: ActiveRoomNavCallMembersProps) {
+  const speakers = useCallSpeakers(embed);
+
+  return <RoomNavCallMembers room={room} members={members} speakers={speakers} />;
 }
 
 type RoomNavItemProps = {
@@ -501,7 +517,12 @@ export function RoomNavItem({
           </NavItemOptions>
         )}
       </NavItem>
-      {callMembers.length > 0 && <RoomNavCallMembers room={room} members={callMembers} />}
+      {callMembers.length > 0 &&
+        (callEmbed && callEmbed.roomId === room.roomId ? (
+          <ActiveRoomNavCallMembers room={room} members={callMembers} embed={callEmbed} />
+        ) : (
+          <RoomNavCallMembers room={room} members={callMembers} />
+        ))}
     </>
   );
 }
