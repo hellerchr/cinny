@@ -1,6 +1,6 @@
 /* eslint-disable jsx-a11y/media-has-caption */
 import React, { ReactNode, useCallback, useEffect, useRef, useState } from 'react';
-import { useAtomValue, useSetAtom } from 'jotai';
+import { useAtom, useAtomValue, useSetAtom } from 'jotai';
 import FocusTrap from 'focus-trap-react';
 import {
   Avatar,
@@ -36,7 +36,7 @@ import {
   useCallStart,
 } from '../hooks/useCallEmbed';
 import { usePushToTalk } from '../hooks/usePushToTalk';
-import { callChatAtom, callEmbedAtom } from '../state/callEmbed';
+import { callChatAtom, callEmbedAtom, callFullscreenAtom } from '../state/callEmbed';
 import { CallEmbed } from '../plugins/call';
 import { useSelectedRoom } from '../hooks/router/useSelectedRoom';
 import { ScreenSize, useScreenSizeContext } from '../hooks/useScreenSize';
@@ -379,10 +379,22 @@ export function CallEmbedProvider({ children }: CallEmbedProviderProps) {
   const selectedRoom = useSelectedRoom();
   const chat = useAtomValue(callChatAtom);
   const screenSize = useScreenSizeContext();
+  const [fullscreen, setFullscreen] = useAtom(callFullscreenAtom);
 
   const chatOnlyView = chat && screenSize !== ScreenSize.Desktop;
 
-  const callVisible = callEmbed && selectedRoom === callEmbed.roomId && joined && !chatOnlyView;
+  const callVisible =
+    fullscreen || (callEmbed && selectedRoom === callEmbed.roomId && joined && !chatOnlyView);
+
+  useEffect(() => {
+    if (!fullscreen) return undefined;
+
+    const handleKeyDown = (evt: KeyboardEvent) => {
+      if (evt.key === 'Escape') setFullscreen(false);
+    };
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, [fullscreen, setFullscreen]);
 
   return (
     <CallEmbedContextProvider value={callEmbed}>
@@ -396,10 +408,11 @@ export function CallEmbedProvider({ children }: CallEmbedProviderProps) {
         style={{
           visibility: callVisible ? undefined : 'hidden',
           position: 'fixed',
-          top: 0,
-          left: 0,
-          width: '100%',
-          height: '50%',
+          top: fullscreen ? '0px' : 0,
+          left: fullscreen ? '0px' : 0,
+          width: fullscreen ? '100vw' : '100%',
+          height: fullscreen ? '100vh' : '50%',
+          zIndex: fullscreen ? config.zIndex.Max : undefined,
         }}
         ref={callEmbedRef}
       />

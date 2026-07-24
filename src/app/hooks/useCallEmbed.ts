@@ -1,6 +1,6 @@
 import { createContext, RefObject, useCallback, useContext, useEffect, useState } from 'react';
 import { MatrixClient, Room } from 'matrix-js-sdk';
-import { useSetAtom } from 'jotai';
+import { useAtomValue, useSetAtom } from 'jotai';
 import {
   CallEmbed,
   ElementCallThemeKind,
@@ -9,7 +9,7 @@ import {
 } from '../plugins/call';
 import { useMatrixClient } from './useMatrixClient';
 import { ThemeKind, useTheme } from './useTheme';
-import { callEmbedAtom } from '../state/callEmbed';
+import { callEmbedAtom, callFullscreenAtom } from '../state/callEmbed';
 import { useResizeObserver } from './useResizeObserver';
 import { CallControlState } from '../plugins/call/CallControlState';
 import { useCallMembersChange, useCallSession } from './useCall';
@@ -122,8 +122,11 @@ export const useCallThemeSync = (embed: CallEmbed) => {
 
 export const useCallEmbedPlacementSync = (containerViewRef: RefObject<HTMLDivElement>): void => {
   const callEmbedRef = useCallEmbedRef();
+  const fullscreen = useAtomValue(callFullscreenAtom);
 
   const syncCallEmbedPlacement = useCallback(() => {
+    if (fullscreen) return;
+
     const embedEl = callEmbedRef.current;
     const container = containerViewRef.current;
     if (!embedEl || !container) return;
@@ -132,7 +135,11 @@ export const useCallEmbedPlacementSync = (containerViewRef: RefObject<HTMLDivEle
     embedEl.style.left = `${container.offsetLeft}px`;
     embedEl.style.width = `${container.clientWidth}px`;
     embedEl.style.height = `${container.clientHeight}px`;
-  }, [callEmbedRef, containerViewRef]);
+  }, [fullscreen, callEmbedRef, containerViewRef]);
+
+  useEffect(() => {
+    syncCallEmbedPlacement();
+  }, [syncCallEmbedPlacement]);
 
   useResizeObserver(
     syncCallEmbedPlacement,

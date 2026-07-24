@@ -1,10 +1,10 @@
 import { Box, Chip, Icon, IconButton, Icons, Spinner, Text, Tooltip, TooltipProvider } from 'folds';
 import React, { useCallback } from 'react';
-import { useSetAtom } from 'jotai';
+import { useAtom, useSetAtom } from 'jotai';
 import { StatusDivider } from './components';
 import { CallEmbed, useCallControlState } from '../../plugins/call';
 import { AsyncStatus, useAsyncCallback } from '../../hooks/useAsyncCallback';
-import { callEmbedAtom } from '../../state/callEmbed';
+import { callEmbedAtom, callFullscreenAtom } from '../../state/callEmbed';
 
 type MicrophoneButtonProps = {
   enabled: boolean;
@@ -14,7 +14,7 @@ type MicrophoneButtonProps = {
 function MicrophoneButton({ enabled, onToggle, disabled }: MicrophoneButtonProps) {
   const [micState, toggleMic] = useAsyncCallback(onToggle);
   const loading = micState.status === AsyncStatus.Loading;
-  
+
   return (
     <TooltipProvider
       position="Top"
@@ -152,6 +152,38 @@ function ScreenShareButton({ enabled, onToggle, disabled }: ScreenShareButtonPro
   );
 }
 
+type FullscreenButtonProps = {
+  fullscreen: boolean;
+  onToggle: () => void;
+};
+function FullscreenButton({ fullscreen, onToggle }: FullscreenButtonProps) {
+  return (
+    <TooltipProvider
+      position="Top"
+      tooltip={
+        <Tooltip>
+          <Text size="T200">{fullscreen ? 'Exit Fullscreen' : 'Fullscreen'}</Text>
+        </Tooltip>
+      }
+    >
+      {(anchorRef) => (
+        <IconButton
+          ref={anchorRef}
+          variant={fullscreen ? 'Success' : 'Surface'}
+          fill="Soft"
+          radii="300"
+          size="300"
+          onClick={onToggle}
+          outlined
+          aria-pressed={fullscreen}
+        >
+          <Icon size="100" src={Icons.Monitor} filled={fullscreen} />
+        </IconButton>
+      )}
+    </TooltipProvider>
+  );
+}
+
 export function CallControl({
   callEmbed,
   compact,
@@ -163,8 +195,12 @@ export function CallControl({
 }) {
   const { microphone, video, sound, screenshare } = useCallControlState(callEmbed.control);
   const setCallEmbed = useSetAtom(callEmbedAtom);
+  const [fullscreen, setFullscreen] = useAtom(callFullscreenAtom);
 
-  const handleMicrophoneToggle = useCallback(() => callEmbed.control.toggleMicrophone(), [callEmbed]);
+  const handleMicrophoneToggle = useCallback(
+    () => callEmbed.control.toggleMicrophone(),
+    [callEmbed]
+  );
   const handleVideoToggle = useCallback(() => callEmbed.control.toggleVideo(), [callEmbed]);
 
   const [hangupState, hangup] = useAsyncCallback(
@@ -195,17 +231,16 @@ export function CallControl({
           disabled={!callJoined}
         />
         {!compact && <StatusDivider />}
-        <VideoButton
-          enabled={video}
-          onToggle={handleVideoToggle}
-          disabled={!callJoined}
-        />
+        <VideoButton enabled={video} onToggle={handleVideoToggle} disabled={!callJoined} />
         {!compact && (
           <ScreenShareButton
             enabled={screenshare}
             onToggle={() => callEmbed.control.toggleScreenshare()}
             disabled={!callJoined}
           />
+        )}
+        {!compact && (
+          <FullscreenButton fullscreen={fullscreen} onToggle={() => setFullscreen(!fullscreen)} />
         )}
       </Box>
       <StatusDivider />
