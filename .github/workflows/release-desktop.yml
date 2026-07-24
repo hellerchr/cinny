@@ -2,9 +2,16 @@ name: Release Desktop App
 
 on:
   workflow_dispatch:
+    inputs:
+      tag:
+        description: 'Release tag, e.g. v4.12.3-desktop.2'
+        required: true
   push:
     tags:
       - 'v*-desktop*'
+
+permissions:
+  contents: write
 
 jobs:
   build-desktop:
@@ -38,6 +45,7 @@ jobs:
       - name: Upload artifacts to release
         uses: softprops/action-gh-release@v2
         with:
+          tag_name: ${{ github.event.inputs.tag || github.ref_name }}
           files: ${{ matrix.artifact_glob }}
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
