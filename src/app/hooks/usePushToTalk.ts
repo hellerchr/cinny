@@ -17,6 +17,39 @@ const setMicrophone = (embed: CallEmbed, enabled: boolean) => {
 const isTauri = (): boolean =>
   typeof (window as { __TAURI_INTERNALS__?: unknown }).__TAURI_INTERNALS__ !== 'undefined';
 
+const MODIFIER_CODES = [
+  'MetaLeft',
+  'MetaRight',
+  'ShiftLeft',
+  'ShiftRight',
+  'ControlLeft',
+  'ControlRight',
+  'AltLeft',
+  'AltRight',
+];
+const isModifierCode = (code: string): boolean => MODIFIER_CODES.includes(code);
+
+// Global hotkey plugin cannot register modifier-only keys,
+// so those are handled by the native event listener (see src-tauri/src/ptt.rs).
+const registerNativeModifierKey = (key: string, onTalkingChange: (talking: boolean) => void) => {
+  const unlisteners: Array<Promise<() => void>> = [];
+
+  Promise.all([import('@tauri-apps/api/core'), import('@tauri-apps/api/event')])
+    .then(([{ invoke }, { listen }]) => {
+      invoke('set_ptt_key', { key }).catch(() => undefined);
+      unlisteners.push(listen('ptt-key-press', () => onTalkingChange(true)));
+      unlisteners.push(listen('ptt-key-release', () => onTalkingChange(false)));
+    })
+    .catch(() => undefined);
+
+  return () => {
+    import('@tauri-apps/api/core')
+      .then(({ invoke }) => invoke('set_ptt_key', { key: null }))
+      .catch(() => undefined);
+    unlisteners.forEach((unlisten) => unlisten.then((fn) => fn()).catch(() => undefined));
+  };
+};
+
 const registerGlobalShortcut = (key: string, onTalkingChange: (talking: boolean) => void) => {
   let unregister: (() => void) | undefined;
   let disposed = false;
@@ -38,6 +71,11 @@ const registerGlobalShortcut = (key: string, onTalkingChange: (talking: boolean)
     disposed = true;
     unregister?.();
   };
+};
+
+const registerGlobalKey = (key: string, onTalkingChange: (talking: boolean) => void) => {
+  if (isModifierCode(key)) return registerNativeModifierKey(key, onTalkingChange);
+  return registerGlobalShortcut(key, onTalkingChange);
 };
 
 export const usePushToTalk = (embed: CallEmbed, joined: boolean): void => {
@@ -70,9 +108,7 @@ export const usePushToTalk = (embed: CallEmbed, joined: boolean): void => {
     window.addEventListener('keyup', handleKeyUp);
     window.addEventListener('blur', handleBlur);
 
-    const unregisterGlobal = isTauri()
-      ? registerGlobalShortcut(pushToTalkKey, setTalking)
-      : undefined;
+    const unregisterGlobal = isTauri() ? registerGlobalKey(pushToTalkKey, setTalking) : undefined;
 
     return () => {
       window.removeEventListener('keydown', handleKeyDown);
