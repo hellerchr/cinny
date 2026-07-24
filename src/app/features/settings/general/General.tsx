@@ -783,7 +783,7 @@ function Voice() {
       <SequenceCard className={SequenceCardStyle} variant="SurfaceVariant" direction="Column">
         <SettingTile
           title="Push to Talk"
-          description="Hold the push to talk key to unmute your microphone while in a call. Only works while the window is focused."
+          description="Hold the push to talk key to unmute your microphone while in a call. In the desktop app the key works globally, even when the window is not focused."
           after={<Switch variant="Primary" value={pushToTalk} onChange={setPushToTalk} />}
         />
       </SequenceCard>

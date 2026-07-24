@@ -14,6 +14,32 @@ const setMicrophone = (embed: CallEmbed, enabled: boolean) => {
   }
 };
 
+const isTauri = (): boolean =>
+  typeof (window as { __TAURI_INTERNALS__?: unknown }).__TAURI_INTERNALS__ !== 'undefined';
+
+const registerGlobalShortcut = (key: string, onTalkingChange: (talking: boolean) => void) => {
+  let unregister: (() => void) | undefined;
+  let disposed = false;
+
+  import('@tauri-apps/plugin-global-shortcut')
+    .then((gs) => {
+      if (disposed) return undefined;
+      return gs
+        .register(key, (event) => onTalkingChange(event.state === 'Pressed'))
+        .then(() => {
+          unregister = () => {
+            gs.unregister(key).catch(() => undefined);
+          };
+        });
+    })
+    .catch(() => undefined);
+
+  return () => {
+    disposed = true;
+    unregister?.();
+  };
+};
+
 export const usePushToTalk = (embed: CallEmbed, joined: boolean): void => {
   const [pushToTalk] = useSetting(settingsAtom, 'pushToTalk');
   const [pushToTalkKey] = useSetting(settingsAtom, 'pushToTalkKey');
@@ -22,31 +48,37 @@ export const usePushToTalk = (embed: CallEmbed, joined: boolean): void => {
     if (!pushToTalk || !joined) return undefined;
 
     let talking = false;
+    const setTalking = (value: boolean) => {
+      if (talking === value) return;
+      talking = value;
+      setMicrophone(embed, value);
+    };
+
     setMicrophone(embed, false);
 
     const handleKeyDown = (evt: KeyboardEvent) => {
       if (evt.code !== pushToTalkKey || evt.repeat || isTypingTarget(evt.target)) return;
-      talking = true;
-      setMicrophone(embed, true);
+      setTalking(true);
     };
     const handleKeyUp = (evt: KeyboardEvent) => {
-      if (evt.code !== pushToTalkKey || !talking) return;
-      talking = false;
-      setMicrophone(embed, false);
+      if (evt.code !== pushToTalkKey) return;
+      setTalking(false);
     };
-    const handleBlur = () => {
-      if (!talking) return;
-      talking = false;
-      setMicrophone(embed, false);
-    };
+    const handleBlur = () => setTalking(false);
 
     window.addEventListener('keydown', handleKeyDown);
     window.addEventListener('keyup', handleKeyUp);
     window.addEventListener('blur', handleBlur);
+
+    const unregisterGlobal = isTauri()
+      ? registerGlobalShortcut(pushToTalkKey, setTalking)
+      : undefined;
+
     return () => {
       window.removeEventListener('keydown', handleKeyDown);
       window.removeEventListener('keyup', handleKeyUp);
       window.removeEventListener('blur', handleBlur);
+      unregisterGlobal?.();
     };
   }, [pushToTalk, pushToTalkKey, embed, joined]);
 };
