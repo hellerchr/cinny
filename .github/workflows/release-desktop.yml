@@ -27,6 +27,7 @@ jobs:
             artifact_glob: |
               src-tauri/target/release/bundle/appimage/*.AppImage
               src-tauri/target/release/bundle/deb/*.deb
+              *.flatpak
 
     runs-on: ${{ matrix.os }}
 
@@ -51,6 +52,16 @@ jobs:
 
       - name: Build desktop app
         run: npm run tauri:build
+
+      - name: Build Flatpak bundle
+        if: matrix.os == 'ubuntu-latest'
+        run: |
+          sudo apt-get install -y flatpak flatpak-builder
+          flatpak --user remote-add --if-not-exists flathub https://dl.flathub.org/repo/flathub.flatpakrepo
+          flatpak --user install -y flathub org.gnome.Platform//48 org.gnome.Sdk//48
+          flatpak-builder --force-clean --repo=repo build-dir src-tauri/flatpak/app.cinny.desktop.yml
+          TAG="${{ github.event.inputs.tag || github.ref_name }}"
+          flatpak build-bundle repo "Cinny_${TAG#v}_x86_64.flatpak" app.cinny.desktop
 
       - name: Upload artifacts to release
         uses: softprops/action-gh-release@v2

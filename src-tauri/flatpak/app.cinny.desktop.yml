@@ -1,0 +1,28 @@
+app-id: app.cinny.desktop
+runtime: org.gnome.Platform
+runtime-version: '48'
+sdk: org.gnome.Sdk
+command: cinny
+finish-args:
+  - --share=ipc
+  - --socket=fallback-x11
+  - --socket=wayland
+  - --socket=pulseaudio
+  - --share=network
+  - --device=dri
+  - --talk-name=org.freedesktop.Notifications
+modules:
+  - name: cinny
+    buildsystem: simple
+    build-commands:
+      - install -Dm755 cinny /app/bin/cinny
+      - install -Dm644 app.cinny.desktop.desktop /app/share/applications/app.cinny.desktop.desktop
+      - install -Dm644 app.cinny.desktop.png /app/share/icons/hicolor/512x512/apps/app.cinny.desktop.png
+    sources:
+      - type: file
+        path: ../target/release/cinny
+      - type: file
+        path: app.cinny.desktop.desktop
+      - type: file
+        path: ../icons/icon.png
+        dest-filename: app.cinny.desktop.png
