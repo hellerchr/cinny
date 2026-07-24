@@ -331,6 +331,8 @@ dependencies = [
 name = "cinny"
 version = "4.12.3"
 dependencies = [
+ "core-foundation 0.10.1",
+ "core-graphics 0.25.0",
  "rdev",
  "serde",
  "serde_json",
